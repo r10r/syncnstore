@@ -91,7 +91,7 @@ function run_rsync {
         rsync_status=$?
         # TODO check errors (in itemize changes?)
         # ignore error 23 for now
-        if [ $rsync_status -ne 0 -o  $rsync_status -ne 23 ]; then
+        if [ $rsync_status -ne 0 -a  $rsync_status -ne 23 ]; then
             log "Rsync failed with status ${rsync_status}"
           exit 1
         fi

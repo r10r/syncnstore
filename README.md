@@ -21,3 +21,9 @@ rsync -avH --compare-dest=$(pwd)/data1.sync1 data1 data1.sync2
 
 * mind rsync exit values
 * distinguish between temporary, minor and severe errors
+
+
+## -- similar projects --
+
+* http://daemonza.github.io/RsyncWrap/
+*
