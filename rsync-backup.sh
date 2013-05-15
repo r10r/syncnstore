@@ -87,8 +87,11 @@ function run_rsync {
     echo "Executing command: ${RSYNC_CMD}"
     if [ "$1" != "test" ]; then
         ${RSYNC_CMD}
+        compress_logfile
         rsync_status=$?
-        if [ $rsync_status -ne 0 ]; then
+        # TODO check errors (in itemize changes?)
+        # ignore error 23 for now
+        if [ $rsync_status -ne 0 -o  $rsync_status -ne 23 ]; then
             log "Rsync failed with status ${rsync_status}"
           exit 1
         fi
@@ -118,7 +121,6 @@ load_configuration
 check_connection
 create_lockfile
 run_rsync
-compress_logfile
 echo "-- Stop backup $(date)"
 log "Backup finished"
 rm $LOCKFILE
