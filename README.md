@@ -1,4 +1,13 @@
-syncnstore
-==========
+# -- syncnstore ( sync'n store ) --
 
-sync and store your data
+Sync and store your data.
+
+
+## -- sparse backups --
+
+rsync -avH --compare-dest=$(pwd)/data1.sync1/ data1 data1.sync2
+
+
+### -- restore --
+
+--compare-dest=DIR
