@@ -11,10 +11,22 @@
 # * move excludes into profile
 # * watchdog (cron scripts that checks if backup was run)
 
+# http://samba.2283325.n4.nabble.com/xattrs-on-symlinks-td2505771.html
+#
+# http://help.bombich.com/discussions/questions/5941-rsync-error-get_xattr_names-llistxattr-no-such-file-or-directory
+# when using --link-dest the receiver outputs a log of error messages
+
+# --prune-empty-dirs is not working
+# https://lists.samba.org/archive/rsync/2009-October/023981.html
+# removing empty directories does not work either (find . -type d -emptyf -exec rmdir {} \;)
+# on qnap because busybox find does not have the '-empty' option
+
+# create backup locally in a sparse image transfer afterwards (avoid expensive roundtrips)
+
 
 LOCKFILE="/tmp/rsync-backup.lock"
 PROG=$0
-RSYNC="/usr/local/Cellar/rsync/3.0.9/bin/rsync"
+RSYNC="/tmp/homebrew/rsync-3.0.9/rsync"
 CONF="$HOME/.rsync"
 PROFILE=$1
 CONFIG_FILE=$CONF/profiles/$PROFILE
@@ -78,16 +90,17 @@ function create_lockfile {
 
 function run_rsync {
 
-    COMPARE_DEST=$(ssh ${REMOTE} "ls -r ${DST} | cut -f  1" | xargs -I {} echo "--compare-dest=${DST}{}" | tr '\n' ' ')
+#    COMPARE_DEST=$(ssh ${REMOTE} "ls -r ${DST} | cut -f  1" | xargs -I {} echo "--compare-dest=${DST}{}" | tr '\n' ' ')
+     COMPARE_DEST="--compare-dest=${DST}/2013_05_14-14:00:21"
 
-    RSYNC_BASE_OPTIONS="-ax --stats -S -H -X -e ssh"
+    RSYNC_BASE_OPTIONS="-ax --stats -S -H -X -e ssh --prune-empty-dirs"
     RSYNC_CMD_OPTIONS="--timeout=${IO_TIMEOUT} --exclude-from=${EXCLUDE} --log-file ${RSYNC_LOGFILE}"
     RSYNC_CMD="sudo $RSYNC ${RSYNC_BASE_OPTIONS} ${RSYNC_CMD_OPTIONS}  ${COMPARE_DEST} ${SRC} ${REMOTE}:${DST}/${NEW}"
 
     echo "Executing command: ${RSYNC_CMD}"
     if [ "$1" != "test" ]; then
         ${RSYNC_CMD}
-        compress_logfile
+        compress_rsync_logfile
         rsync_status=$?
         # TODO check errors (in itemize changes?)
         # ignore error 23 for now
@@ -98,13 +111,19 @@ function run_rsync {
     fi
 }
 
-function compress_logfile {
+function compress_rsync_logfile {
     # compress logfile
     if tar czf ${RSYNC_LOGFILE}.tar.gz $RSYNC_LOGFILE; then
       rm -f $RSYNC_LOGFILE
     fi
 }
 
+function strip_logfile {
+    mv $LOGFILE $LOGFILE.orig
+    cat $LOGFILE.orig | grep -v "rsync: get_xattr_names: llistxattr(.*) failed: No such file or directory (2)" > $LOGFILE
+    rm $LOGFILE.orig
+
+}
 # -v increase verbosity
 # -a turns on archive mode (recursive copy + retain attributes)
 # -x don't cross device boundaries (ignore mounted volumes)
@@ -123,5 +142,6 @@ create_lockfile
 run_rsync
 echo "-- Stop backup $(date)"
 log "Backup finished"
+strip_logfile
 rm $LOCKFILE
 exit 0

@@ -1,0 +1,249 @@
+
+<html>
+  <head><title>README.md</title></head>
+  <body>
+<h1>syncnstore ( sync'n store )</h1>
+
+<p>Concept to sync and store your data.</p>
+
+<ul>
+<li>small storage size</li>
+<li>incremental/differential backup</li>
+<li>fast backup</li>
+<li>fast restore</li>
+</ul>
+
+
+<h2>tests/benchmarks</h2>
+
+<h3>extended attributes</h3>
+
+<p>show attributes for files</p>
+
+<pre>
+find . -type f -and -size +100M | xargs xattr -l
+</pre>
+
+
+<h3>small files</h3>
+
+<p>Small files (&lt;5k) make up 94% of the number of total files
+Time required to compress small files (&lt;10k):</p>
+
+<pre>
+bash-3.2# time find / -type f -and -size -10k > /dev/null
+real    1m23.957s
+user    0m1.725s
+sys     0m44.165s
+</pre>
+
+
+<h4>tar</h4>
+
+<pre>
+bash-3.2# time find / -type f -and -size -10k | sed 's/.*/"&"/' |  xargs tar rf /tmp/smallfiles.tar
+real    7m43.407s
+user    3m34.119s
+sys     2m52.301s
+</pre>
+
+
+<p>size</p>
+
+<pre>
+bash-3.2# du -hs /tmp/smallfiles.tar
+2,3G    /tmp/smallfiles.tar
+</pre>
+
+
+
+
+<pre>
+bash-3.2# time gzip /tmp/smallfiles.tar
+real    0m51.667s
+user    0m50.415s
+sys     0m1.097s
+</pre>
+
+
+
+
+<pre>
+[ruben@rauscher rdifftest]$ du -hs /tmp/smallfiles.tar.gz
+428M    /tmp/smallfiles.tar.gz
+</pre>
+
+
+<h4>shasum</h4>
+
+<pre>
+bash-3.2# time find / -type f -and -size -10k | sed 's/.*/"&"/'  | xargs shasum
+real    4m17.804s
+user    0m48.067s
+sys     1m23.424s
+</pre>
+
+
+<h3>remove empty directories</h3>
+
+<pre>
+find . -type d -and -empty -delete
+</pre>
+
+
+<h3>rsync</h3>
+
+<ul>
+<li>mind rsync exit values</li>
+<li>distinguish between temporary, minor and severe errors</li>
+<li><code>--compare-dest</code> option allows only 20 references which makes it unusable</li>
+</ul>
+
+
+<p>initial sync</p>
+
+<pre>
+real    6m11.258s
+user    0m47.868s
+sys 6m7.187s
+bash-3.2# time /usr/local/bin/rsync --stats -ax -S -H -X --exclude-from=/Users/ruben/.rsync/excludes --max-size=10K+1 / .
+</pre>
+
+
+<p>tar synced directory</p>
+
+<pre>
+real    5m28.498s
+user    0m23.520s
+sys 1m58.167s
+bash-3.2# time tar cf rsynctest.tar rsynctest
+</pre>
+
+
+<p>re-sync</p>
+
+<pre>
+real    1m27.315s
+user    0m12.622s
+sys 1m23.973s
+bash-3.2# time /usr/local/bin/rsync --stats -ax -S -H -X --exclude-from=/Users/ruben/.rsync/excludes --max-size=10K+1 --log-file ../rsynctest.log.1 / .
+</pre>
+
+
+<h3>sparse image</h3>
+
+<p>sync of all files &lt;10k+1</p>
+
+<p>initial sync</p>
+
+<pre>
+bash-3.2# time /usr/local/bin/rsync --stats -ax -S -H -X --exclude-from=/Users/ruben/.rsync/excludes --max-size=10K+1 / /Volumes/Disk\ Image/
+real    6m29.415s
+user    0m47.629s
+sys     5m46.709s
+</pre>
+
+
+<p>size</p>
+
+<pre>
+bash-3.2# du -hs /Users/ruben/backup.sparseimage
+3,6G    /Users/ruben/backup.sparseimage
+</pre>
+
+
+<p>signature generation</p>
+
+<pre>
+bash-3.2# time rdiff signature /Users/ruben/backup.sparseimage > /Users/ruben/backup.sparseimage.signature
+real    0m12.263s
+user    0m8.407s
+sys     0m1.505s
+</pre>
+
+
+<p>sync</p>
+
+<pre>
+bash-3.2# time /usr/local/bin/rsync --stats -ax -S -H -X --exclude-from=/Users/ruben/.rsync/excludes --max-size=10K+1 / /Volumes/Disk\ Image/
+real    1m57.243s
+user    0m16.662s
+sys     1m42.620s
+</pre>
+
+
+<p>sparse delta</p>
+
+<pre>
+bash-3.2# time rdiff delta /Users/ruben/backup.sparseimage.signature /Users/ruben/backup.sparseimage > /Users/ruben/backup.sparseimage.delta.1
+real    0m20.362s
+user    0m15.525s
+sys 0m1.780s
+</pre>
+
+
+<p>sparse delta size</p>
+
+<pre>
+bash-3.2# du -hs /Users/ruben/backup.sparseimage.delta.1
+ 20M    /Users/ruben/backup.sparseimage.delta.1
+</pre>
+
+
+<h3>signature generation</h3>
+
+<pre>
+bash-3.2# generate_signatures.sh /tmp/filelist_gt100k.txt 100k
+real    38m36.256s
+user    28m19.717s
+sys     7m46.087s
+</pre>
+
+
+<ul>
+<li>Store files and metadata separately ? (use database?, sqlite ?)</li>
+</ul>
+
+
+<h2>GIT</h2>
+
+<ul>
+<li>use git-hash-object - Compute object ID and optionally creates a blob from a file to create blobs from files</li>
+<li>http://git-scm.com/book/en/Git-Internals-Git-Objects</li>
+<li>http://smalltalkthoughts.blogspot.de/2010/03/git-tree-objects-how-are-they-stored.html</li>
+</ul>
+
+
+<h2>TAR</h2>
+
+<p>find . -type f -name "*.java" | xargs tar rvf myfile.tar</p>
+
+<p>http://alvinalexander.com/blog/post/linux-unix/using-find-xargs-tar-create-huge-archive-cygwin-linux-unix</p>
+
+<h2>TODO</h2>
+
+<ul>
+<li>hash path and name of file (test)</li>
+<li>compress deltas (test)</li>
+<li>save deltas in git together with metadata (test)</li>
+<li>save extended attributes</li>
+<li>sync small files locally</li>
+<li>build boot image from synced data</li>
+<li>reduce sparse image size for faster restore (folders that change often / rarely)</li>
+<li>keep track which files are stored in which sparse images</li>
+<li>create deltas for sparse deltas</li>
+</ul>
+
+
+<p>patch, delta and signature generation take the same time (if read/write IO take the same time)
+patching is fairly fast and inexpensive apart from the IO</p>
+
+<h3>inteligent paritioning/chunking</h3>
+
+<ul>
+<li>identify file types that change often /rarely</li>
+<li>use LSB and OsX file system structure</li>
+</ul>
+
+  </body>
+</html>
