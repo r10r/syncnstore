@@ -28,5 +28,5 @@ The profile folder can contain an exclude list
 Dependencies
 ---------------
 
-* rsync, cpio, ssh, shell
+* rsync, ssh, bash
 * Public key authentication to access the host to backup easily
