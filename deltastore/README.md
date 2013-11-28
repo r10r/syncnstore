@@ -194,3 +194,9 @@ patching is fairly fast and inexpensive apart from the IO
 
 - identify file types that change often /rarely
 - use LSB and OsX file system structure
+
+
+## change log
+
+- opensnoop (OSX leopard only)
+- http://www.osxbook.com/software/fslogger/
