@@ -45,7 +45,7 @@ test_file_should_equal() {
 
 test_prompt_remove_dir() {
 	while true; do
-		read -p "Do you wish to remote $1? " yn
+		read -p "Do you wish to remove $1? " yn
 		case $yn in
 			Yes|yes|y|Y) rm -rf $1; return 0;;
 			No|no|n|N) return 1;;
