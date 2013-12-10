@@ -6,6 +6,12 @@ readonly BACKUP_DIR=${BACKUP_DIR:-/mnt/storage/backup}
 readonly RSYNC_OPTS="--stats --timeout=30 -i -q -avH ${RSYNC_OPTS}"
 LOG_PREFIX=""
 
+if which logger 1>/dev/null 2>&1; then
+	readonly HAS_LOGGER=true
+else
+	readonly HAS_LOGGER=false
+fi
+
 # $1: message
 # $2: severity (optional)
 log(){
@@ -13,7 +19,12 @@ log(){
 	# don't use colons and square brackets, as they are
 	# used as separators between program and pid 
 	local profile="$PROFILE@$TIMESTAMP"
-	logger -s -t "backup" -p local0.${severity} "$profile $1"
+
+	if $HAS_LOGGER; then
+		logger -s -t "backup" -p local0.${severity} "$profile $1"
+	else
+		echo "backup $profile $1"
+	fi
 }
 
 log_error() {

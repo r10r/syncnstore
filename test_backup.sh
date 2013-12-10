@@ -3,7 +3,7 @@
 export BACKUP_DIR=${BACKUP_DIR:-/tmp/backup-test}
 
 test_log() {
-	echo "[TEST] $1"
+	log "[TEST] $1"
 }
 
 file_linecount() {
