@@ -3,7 +3,7 @@
 export BACKUP_DIR=${BACKUP_DIR:-/tmp/backup-test}
 
 test_log() {
-	echo "[TEST] $1"
+	log "[TEST] $1"
 }
 
 file_linecount() {
@@ -25,7 +25,7 @@ test_file_linecount_ge() {
 
 test_error() {
 	test_log "Error: $1"
-	tput bel
+	which tput 1>/dev/null 2>&1 && tput bel
 	exit 1
 }
 
@@ -118,8 +118,9 @@ test_backup1() {
 	test_rsync $t1 $profile $source
 	dir1=$BACKUP_DIR/$profile/$t1
 
+	test_file_should_not_exist $BACKUP_DIR/$profile/lock
 	test_directory_should_exist $dir1
-	test_file_linecount_ge $dir1.log 20
+	test_file_linecount_ge $dir1.log 10
 	test_file_should_equal $dir1/README1 "r1.sync1"
 	test_file_should_equal $dir1/README2 "r2.sync1"
 	test_file_should_equal $dir1/README3 "r3.sync1"
@@ -138,9 +139,10 @@ test_backup2() {
 	test_rsync $t2 $profile $source
 	dir2=$BACKUP_DIR/$profile/$t2
 
+	test_file_should_not_exist $BACKUP_DIR/$profile/lock
 	test_directory_should_exist $dir2
 	test_file_should_exist $dir2.log
-	test_file_linecount_ge $dir2.log 17
+	test_file_linecount_ge $dir2.log 10
 	test_file_should_equal $dir2/README1 "r1.sync2"
 	test_file_should_not_exist $dir2/README2
 	test_file_should_not_exist $dir2/README3
@@ -159,6 +161,7 @@ test_backup3() {
 	test_rsync $t3 $profile $source
 	dir3=$BACKUP_DIR/$profile/$t3
 
+	test_file_should_not_exist $BACKUP_DIR/$profile/lock
 	test_directory_should_exist $dir3
 	test_file_should_not_exist $dir3/README1
 	test_file_should_equal $dir3/README2 "r2.sync3"
@@ -178,6 +181,7 @@ test_backup4() {
 	test_rsync $t4 $profile $source
 	dir4=$BACKUP_DIR/$profile/$t4
 
+	test_file_should_not_exist $BACKUP_DIR/$profile/lock
 	test_directory_should_exist $dir4
 	test_file_should_not_exist $dir4/README1
 	test_file_should_not_exist $dir4/README2
@@ -203,6 +207,7 @@ test_backup5() {
 	test_rsync $t5 $profile $source
 	dir5=$BACKUP_DIR/$profile/$t5
 
+	test_file_should_not_exist $BACKUP_DIR/$profile/lock
 	test_directory_should_exist $dir5
 	test_file_should_not_exist $merged/README3
 	test_file_should_not_exist $dir5/README3

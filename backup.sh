@@ -2,8 +2,15 @@
 
 # airstation initial
 readonly BACKUP_DIR=${BACKUP_DIR:-/mnt/storage/backup}
-readonly RSYNC_OPTS="--stats --timeout=30 -i -q ${RSYNC_OPTS}"
+# delete has no effect here because rsync does not delete from 'compare-dest'
+readonly RSYNC_OPTS="--stats --timeout=30 -i -q -avH ${RSYNC_OPTS}"
 LOG_PREFIX=""
+
+if which logger 1>/dev/null 2>&1; then
+	readonly HAS_LOGGER=true
+else
+	readonly HAS_LOGGER=false
+fi
 
 # $1: message
 # $2: severity (optional)
@@ -12,7 +19,12 @@ log(){
 	# don't use colons and square brackets, as they are
 	# used as separators between program and pid 
 	local profile="$PROFILE@$TIMESTAMP"
-	logger -s -t "backup" -p local0.${severity} "$profile $1"
+
+	if $HAS_LOGGER; then
+		logger -s -t "backup" -p local0.${severity} "$profile $1"
+	else
+		echo "backup $profile $1"
+	fi
 }
 
 log_error() {
@@ -73,17 +85,17 @@ rsync_backup() {
 	local excludes=$dir/excludes.txt
 	local name=$dir/${TIMESTAMP}
 
-	log "Backup profile:${PROFILE} source:${source} target:${name}"
+	log "Starting backup profile:${PROFILE} source:${source} target:${name}"
 
 	if ! [ -L $dir/first ]; then
 		log "Creating first full backup"
-		rsync --exclude-from=$excludes -avH $RSYNC_OPTS --log-file ${name}.log \
+		rsync --exclude-from=$excludes $RSYNC_OPTS --log-file ${name}.log \
 			$source ${name} || return `handle_error rsync $?`
 		ln -s ${name} $dir/first
 		hardlink_files ${name} $dir/merged || return `handle_error 'hardlink_files' $?`
 	else
 		log "Creating incremental backup"
-		rsync --exclude-from=$excludes -avH $RSYNC_OPTS --log-file ${name}.log \
+		rsync --exclude-from=$excludes $RSYNC_OPTS --log-file ${name}.log \
 			--compare-dest=${dir}/merged $source ${name} || return `handle_error rsync $?`
 		# check if directory is empty
 		 if ! [ -z "$(ls -A ${name})" ]; then
@@ -92,7 +104,7 @@ rsync_backup() {
 
 		# remove deleted files from merged view
 		log "Deleting removed files from ${dir}/merged"
-		rsync --exclude-from=$excludes -avH $RSYNC_OPTS \
+		rsync --exclude-from=$excludes $RSYNC_OPTS \
 			--delete $source ${dir}/merged || return `handle_error rsync $?`
 	fi
 
