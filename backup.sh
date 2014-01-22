@@ -37,11 +37,11 @@ handle_error() {
 # $1: source folder
 # $2: target folder
 hardlink_files() {
+	log "Update hardlinks $1 -> $2"
 	# hardlinks only supported by GNU cp command (not on OSX)
 	# cp -al $1 $2
 	[ -d $2 ] || mkdir -p $2
-	cd $1
-	find . -print | cpio -p -al $2
+	rsync --link-dest=$1/ -aH $1/ $2 1>/dev/null 2>&1
 }
 
 rsync_backup() {
@@ -59,16 +59,21 @@ rsync_backup() {
 	fi
 
 	if [ -f $lockfile ]; then
-		log_error "Existing logfile $lockfile"
-		return 2
-	else
-		touch $lockfile
+		local pid=$(cat $lockfile)
+		if kill -0 $pid 2>/dev/null; then
+			log_error "Backup process is running #$pid."
+			return 2
+		else
+			log_error "Stale lockfile $lockfile ignored."	
+		fi	
 	fi
+	
+	echo $$ > $lockfile
 
 	local excludes=$dir/excludes.txt
 	local name=$dir/${TIMESTAMP}
 
-	log "source ${source}"
+	log "Backup profile:${PROFILE} source:${source} target:${name}"
 
 	if ! [ -L $dir/first ]; then
 		log "Creating first full backup"
@@ -93,10 +98,10 @@ rsync_backup() {
 
 	[ -d ${dir}/last ] && rm ${dir}/last
 	ln -s ${name} ${dir}/last
-	rm $lockfile
 	local end=`date +%s`
 	log "Duration $(($end-$start)) seconds"
 	unset TIMESTAMP PROFILE
+	rm $lockfile
 }
 
 if [ "$(basename -- $0)" = "backup.sh" ]; then
