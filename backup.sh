@@ -61,14 +61,14 @@ rsync_backup() {
 	TIMESTAMP=$1
 	PROFILE=$2
 	local source=$3
-	local dir=$BACKUP_DIR/$PROFILE
-	local lockfile=$dir/lock
+	local profile_dir=$BACKUP_DIR/$PROFILE
+	local lockfile=$profile_dir/lock
 	local start=`date +%s`
 
-	if ! [ -d $dir ]; then
-		log "Creating backup folder $dir"
-		mkdir $dir
-		touch $dir/excludes.txt
+	if ! [ -d $profile_dir ]; then
+		log "Creating backup folder $profile_dir"
+		mkdir $profile_dir
+		touch $profile_dir/excludes.txt
 	fi
 
 	if [ -f $lockfile ]; then
@@ -78,34 +78,34 @@ rsync_backup() {
 		touch $lockfile
 	fi
 
-	local excludes=$dir/excludes.txt
-	local name=$dir/${TIMESTAMP}
+	local excludes=$profile_dir/excludes.txt
+	local target=$profile_dir/${TIMESTAMP}
 
-	log "Starting backup profile:${PROFILE} source:${source} target:${name}"
+	log "Starting backup profile:${PROFILE} source:${source} target:${target}"
 
-	if ! [ -L $dir/first ]; then
+	if ! [ -L $profile_dir/first ]; then
 		log "Creating first full backup"
-		rsync --exclude-from=$excludes $RSYNC_OPTS --log-file ${name}.log \
-			$source ${name} || return `handle_error rsync $?`
-		ln -s ${name} $dir/first
-		hardlink_files ${name} $dir/merged || return `handle_error 'hardlink_files' $?`
+		rsync --exclude-from=$excludes $RSYNC_OPTS --log-file ${target}.log \
+			$source ${target} || return `handle_error rsync $?`
+		ln -s ${target} $profile_dir/first
+		hardlink_files ${target} $profile_dir/merged || return `handle_error 'hardlink_files' $?`
 	else
 		log "Creating incremental backup"
-		rsync --exclude-from=$excludes $RSYNC_OPTS --log-file ${name}.log \
-			--compare-dest=${dir}/merged $source ${name} || return `handle_error rsync $?`
+		rsync --exclude-from=$excludes $RSYNC_OPTS --log-file ${target}.log \
+			--compare-dest=${profile_dir}/merged $source ${target} || return `handle_error rsync $?`
 		# check if directory is empty
-		 if ! [ -z "$(ls -A ${name})" ]; then
-		 	hardlink_files ${name} ${dir}/merged || return `handle_error 'hardlink_files' $?`
+		 if ! [ -z "$(ls -A ${target})" ]; then
+		 	hardlink_files ${target} ${profile_dir}/merged || return `handle_error 'hardlink_files' $?`
 		 fi
 
 		# remove deleted files from merged view
-		log "Deleting removed files from ${dir}/merged"
+		log "Deleting removed files from ${profile_dir}/merged"
 		rsync --exclude-from=$excludes $RSYNC_OPTS \
-			--delete $source ${dir}/merged || return `handle_error rsync $?`
+			--delete $source ${profile_dir}/merged || return `handle_error rsync $?`
 	fi
 
-	[ -d ${dir}/last ] && rm ${dir}/last
-	ln -s ${name} ${dir}/last
+	[ -d ${profile_dir}/last ] && rm ${profile_dir}/last
+	ln -s ${target} ${profile_dir}/last
 	local end=`date +%s`
 	log "Duration $(($end-$start)) seconds"
 	unset TIMESTAMP PROFILE
