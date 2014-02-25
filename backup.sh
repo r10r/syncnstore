@@ -1,4 +1,4 @@
-#!/bin/bash --posix
+#!/bin/sh --posix
 
 # airstation initial
 readonly BACKUP_DIR=${BACKUP_DIR:-/mnt/storage/backup}
