@@ -13,6 +13,23 @@ else
 	readonly HAS_LOGGER=false
 fi
 
+check_rsync_version(){
+	local version=`$RSYNC_BIN --version  | head -n1 | tr -s ' ' ' '  | cut -d' ' -f 3 `
+	local major=`echo $version | cut -d '.' -f 1`
+	local minor=`echo $version | cut -d '.' -f 2`
+	local patch=`echo $version | cut -d '.' -f 3`
+	
+	# version must be > 3.1.0
+	# test suite fails for versions < 3.1.0 because hardlink
+	# behaviour changed
+	if [ $major -ge 3 -a $minor -ge 1 ]; then
+		return 0
+	else
+		log_error "Rsync versions < 3.1.0 are not supported. Current version is $version."
+		return 1
+	fi
+}
+
 # $1: message
 # $2: severity (optional)
 log(){
@@ -57,7 +74,7 @@ hardlink_files() {
 	$RSYNC_BIN --link-dest=$1/ -aH $1/ $2 1>/dev/null 2>&1
 }
 
-rsync_backup() {
+rsync_backup() {	
 	TIMESTAMP=$1
 	PROFILE=$2
 	local source=$3
@@ -116,6 +133,8 @@ rsync_backup() {
 	unset TIMESTAMP PROFILE
 	rm $lockfile
 }
+
+check_rsync_version || exit 1
 
 if [ "$(basename -- $0)" = "backup.sh" ]; then
 	profile=$1
