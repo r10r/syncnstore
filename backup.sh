@@ -2,6 +2,7 @@
 
 # airstation initial
 readonly BACKUP_DIR=${BACKUP_DIR:-/mnt/storage/backup}
+readonly RSYNC_BIN=${RSYNC_BIN:-rsync}
 # delete has no effect here because rsync does not delete from 'compare-dest'
 readonly RSYNC_OPTS="--stats --timeout=30 -i -q -avH ${RSYNC_OPTS}"
 LOG_PREFIX=""
@@ -53,7 +54,7 @@ hardlink_files() {
 	# hardlinks only supported by GNU cp command (not on OSX)
 	# cp -al $1 $2
 	[ -d $2 ] || mkdir -p $2
-	rsync --link-dest=$1/ -aH $1/ $2 1>/dev/null 2>&1
+	$RSYNC_BIN --link-dest=$1/ -aH $1/ $2 1>/dev/null 2>&1
 }
 
 rsync_backup() {
@@ -89,13 +90,13 @@ rsync_backup() {
 
 	if ! [ -L $profile_dir/first ]; then
 		log "Creating first full backup"
-		rsync --exclude-from=$excludes $RSYNC_OPTS --log-file ${target}.log \
+		$RSYNC_BIN --exclude-from=$excludes $RSYNC_OPTS --log-file ${target}.log \
 			$source ${target} || return `handle_error rsync $?`
 		ln -s ${target} $profile_dir/first
 		hardlink_files ${target} $profile_dir/merged || return `handle_error 'hardlink_files' $?`
 	else
 		log "Creating incremental backup"
-		rsync --exclude-from=$excludes $RSYNC_OPTS --log-file ${target}.log \
+		$RSYNC_BIN --exclude-from=$excludes $RSYNC_OPTS --log-file ${target}.log \
 			--compare-dest=${profile_dir}/merged $source ${target} || return `handle_error rsync $?`
 		# check if directory is empty
 		 if ! [ -z "$(ls -A ${target})" ]; then
@@ -104,7 +105,7 @@ rsync_backup() {
 
 		# remove deleted files from merged view
 		log "Deleting removed files from ${profile_dir}/merged"
-		rsync --exclude-from=$excludes $RSYNC_OPTS \
+		$RSYNC_BIN --exclude-from=$excludes $RSYNC_OPTS \
 			--delete $source ${profile_dir}/merged || return `handle_error rsync $?`
 	fi
 
