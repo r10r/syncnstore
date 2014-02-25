@@ -54,7 +54,6 @@ hardlink_files() {
 	# cp -al $1 $2
 	[ -d $2 ] || mkdir -p $2
 	rsync --link-dest=$1/ -aH $1/ $2 1>/dev/null 2>&1
-#	rsync --link-dest=$1 -avH $1 $2
 }
 
 rsync_backup() {
@@ -72,11 +71,16 @@ rsync_backup() {
 	fi
 
 	if [ -f $lockfile ]; then
-		log_error "Existing logfile $lockfile"
-		return 2
-	else
-		touch $lockfile
+		local pid=$(cat $lockfile)
+		if kill -0 $pid 2>/dev/null; then
+			log_error "Backup process is running #$pid."
+			return 2
+		else
+			log_error "Stale lockfile $lockfile ignored."	
+		fi	
 	fi
+	
+	echo $$ > $lockfile
 
 	local excludes=$profile_dir/excludes.txt
 	local target=$profile_dir/${TIMESTAMP}
